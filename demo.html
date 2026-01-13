@@ -281,6 +281,8 @@
                 <button class="tab" onclick="switchTab('presets')">Tuning Presets</button>
                 <button class="tab" onclick="switchTab('notes')">Note Converter</button>
                 <button class="tab" onclick="switchTab('calculator')">Frequency Calculator</button>
+                <button class="tab" onclick="switchTab('barlength')">Bar Length Finder</button>
+                <button class="tab" onclick="switchTab('optimization')">Optimization Path</button>
             </div>
 
             <!-- Materials Tab -->
@@ -397,6 +399,117 @@
                     <div id="uniform-bar-output" class="output"></div>
                 </div>
             </div>
+
+            <!-- Bar Length Finder Tab -->
+            <div id="barlength-tab" class="tab-content">
+                <div class="info-box">
+                    <p><strong>Bar Length Finder - Step 1 of Optimization</strong></p>
+                    <p>Find the optimal bar length for a target fundamental frequency using binary search. This is the first step in designing a percussion bar.</p>
+                </div>
+                <h2>Find Optimal Bar Length</h2>
+                <div class="grid">
+                    <div class="form-group">
+                        <label for="bl-target-note">Target Note:</label>
+                        <input type="text" id="bl-target-note" value="A3" placeholder="e.g., A3, C4">
+                    </div>
+                    <div class="form-group">
+                        <label for="bl-material">Material:</label>
+                        <select id="bl-material"></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bl-width">Bar Width (mm):</label>
+                        <input type="number" id="bl-width" value="38" min="10" max="100" step="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="bl-thickness">Bar Thickness (mm):</label>
+                        <input type="number" id="bl-thickness" value="25" min="5" max="50" step="1">
+                    </div>
+                </div>
+                <button onclick="findBarLength()">Find Optimal Length</button>
+                <div id="barlength-output" class="output"></div>
+                
+                <div style="margin-top: 30px;">
+                    <h2>About Bar Length Finding</h2>
+                    <p>The bar length finder uses a binary search algorithm to determine the optimal length for a uniform (uncut) bar to produce the target fundamental frequency. The relationship between bar length and frequency is inverse: longer bars produce lower frequencies.</p>
+                    <p><strong>Key points:</strong></p>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li>Uses 2D Timoshenko beam FEM for fast computation</li>
+                        <li>Typically converges within 10-20 iterations</li>
+                        <li>Achieves accuracy within ±1 cent</li>
+                        <li>Starting point for multi-modal optimization</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Optimization Path Tab -->
+            <div id="optimization-tab" class="tab-content">
+                <div class="info-box">
+                    <p><strong>Complete Optimization Workflow</strong></p>
+                    <p>This demonstrates the full three-step optimization path: (1) Bar length finding, (2) Evolutionary algorithm for undercut geometry, and (3) 3D FEM verification.</p>
+                </div>
+                
+                <h2>Step 1: Bar Length Finding</h2>
+                <p>First, we determine the optimal bar length for the fundamental frequency.</p>
+                <div class="grid" style="margin-top: 15px;">
+                    <div class="form-group">
+                        <label for="opt-note">Target Note:</label>
+                        <input type="text" id="opt-note" value="A3">
+                    </div>
+                    <div class="form-group">
+                        <label for="opt-material">Material:</label>
+                        <select id="opt-material"></select>
+                    </div>
+                </div>
+                <button onclick="runOptimizationStep1()">Run Step 1: Find Length</button>
+                <div id="opt-step1-output" class="output"></div>
+
+                <h2 style="margin-top: 30px;">Step 2: Evolutionary Algorithm Optimization</h2>
+                <p>Next, we optimize the undercut geometry to achieve multi-modal tuning (e.g., 1:4:10 for marimba).</p>
+                <div class="grid" style="margin-top: 15px;">
+                    <div class="form-group">
+                        <label for="opt-preset">Tuning Preset:</label>
+                        <select id="opt-preset"></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="opt-num-cuts">Number of Cuts:</label>
+                        <select id="opt-num-cuts">
+                            <option value="1">1 cut</option>
+                            <option value="2" selected>2 cuts</option>
+                            <option value="3">3 cuts</option>
+                        </select>
+                    </div>
+                </div>
+                <p style="margin-top: 10px; font-size: 14px; color: #666;">
+                    <strong>Note:</strong> Optimization is computationally intensive. For demonstration purposes, this uses a small population and few generations. Production work would use larger parameters.
+                </p>
+                <button onclick="runOptimizationStep2()" id="opt-step2-btn">Run Step 2: Optimize Geometry</button>
+                <div id="opt-step2-output" class="output"></div>
+
+                <h2 style="margin-top: 30px;">Step 3: 3D FEM Verification</h2>
+                <p>Finally, we verify the optimized design using 3D solid element FEM for maximum accuracy.</p>
+                <div id="opt-step3-output" class="output">
+                    <p><strong>3D FEM Analysis Features:</strong></p>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li>8-node hexahedral (brick) solid elements</li>
+                        <li>Full 3D stress and strain distribution</li>
+                        <li>Adaptive mesh refinement near undercuts</li>
+                        <li>Mode classification (bending vs. torsional)</li>
+                        <li>Typically within 1-2% of measured frequencies</li>
+                    </ul>
+                    <p style="margin-top: 15px;">Use <code>compute_frequencies_3d()</code> function for production verification of optimized designs.</p>
+                </div>
+
+                <div style="margin-top: 30px; background: #f0f7ff; padding: 20px; border-radius: 8px; border-left: 4px solid #2196f3;">
+                    <h3 style="margin-bottom: 10px;">Complete Workflow Summary</h3>
+                    <ol style="margin-left: 20px;">
+                        <li><strong>Bar Length Finding:</strong> Determine initial bar length for target fundamental frequency</li>
+                        <li><strong>Evolutionary Optimization:</strong> Find optimal undercut positions and depths for multi-modal tuning</li>
+                        <li><strong>3D FEM Verification:</strong> Validate final design with high-accuracy 3D analysis</li>
+                        <li><strong>Physical Prototyping:</strong> Export geometry for CAD/CAM and create actual bar</li>
+                        <li><strong>Fine-tuning:</strong> Measure frequencies and make minor adjustments as needed</li>
+                    </ol>
+                </div>
+            </div>
         </div>
 
         <div class="card">
@@ -427,7 +540,13 @@
             frequencyToNote,
             noteToMidiNumber,
             generateNotesInRange,
-            frequencyErrorCents
+            frequencyErrorCents,
+            findOptimalLength,
+            BarParameters,
+            runEvolutionaryAlgorithm,
+            getDefaultEAParameters,
+            EAConfig,
+            genesToCuts
         } from './src/index.js';
 
         // Make functions available globally for onclick handlers
@@ -437,6 +556,18 @@
         window.convertFrequency = convertFrequency;
         window.generateRange = generateRange;
         window.calculateCents = calculateCents;
+        window.findBarLength = findBarLength;
+        window.runOptimizationStep1 = runOptimizationStep1;
+        window.runOptimizationStep2 = runOptimizationStep2;
+
+        // Global state for optimization workflow
+        let optimizationState = {
+            barLength: null,
+            material: null,
+            targetFreq: null,
+            targetNote: null,
+            optimizationResult: null
+        };
 
         // Tab switching
         function switchTab(tabName) {
@@ -643,11 +774,234 @@
             document.getElementById('uniform-bar-output').textContent = output;
         }
 
+        // Initialize material selectors for bar length and optimization tabs
+        function initializeMaterialSelectors() {
+            const selectors = ['bl-material', 'opt-material'];
+            selectors.forEach(selectorId => {
+                const selector = document.getElementById(selectorId);
+                if (selector) {
+                    let html = '';
+                    Object.entries(MATERIALS).forEach(([key, material]) => {
+                        const selected = key === 'rosewood' ? 'selected' : '';
+                        html += `<option value="${key}" ${selected}>${material.name}</option>`;
+                    });
+                    selector.innerHTML = html;
+                }
+            });
+        }
+
+        // Initialize preset selector for optimization tab
+        function initializePresetSelectors() {
+            const selector = document.getElementById('opt-preset');
+            if (selector) {
+                let html = '';
+                TUNING_PRESETS.forEach((preset, idx) => {
+                    const selected = preset.name === '1:4:10' ? 'selected' : '';
+                    html += `<option value="${idx}" ${selected}>${preset.name} - ${preset.instrument}</option>`;
+                });
+                selector.innerHTML = html;
+            }
+        }
+
+        // Bar Length Finder
+        function findBarLength() {
+            const noteInput = document.getElementById('bl-target-note').value.trim();
+            const materialKey = document.getElementById('bl-material').value;
+            const width = parseFloat(document.getElementById('bl-width').value);
+            const thickness = parseFloat(document.getElementById('bl-thickness').value);
+            
+            const outputDiv = document.getElementById('barlength-output');
+            outputDiv.textContent = 'Searching for optimal length...';
+            
+            try {
+                const targetFreq = noteToFrequency(noteInput);
+                if (!targetFreq) {
+                    outputDiv.textContent = 'Invalid note format. Use format like A3, C4, C#5';
+                    return;
+                }
+                
+                const material = MATERIALS[materialKey];
+                
+                // Use setTimeout to allow UI to update
+                setTimeout(() => {
+                    const result = findOptimalLength(
+                        targetFreq,
+                        width,
+                        thickness,
+                        material,
+                        200,  // min length (mm)
+                        800,  // max length (mm)
+                        1.0,  // tolerance (cents)
+                        50,   // max iterations
+                        80    // num elements
+                    );
+                    
+                    let output = `Target: ${noteInput} (${targetFreq.toFixed(2)} Hz)\n`;
+                    output += `Material: ${material.name}\n`;
+                    output += `Bar dimensions: ${width}mm × ${thickness}mm\n`;
+                    output += `${'─'.repeat(50)}\n\n`;
+                    output += `Results:\n`;
+                    output += `  Optimal length: ${result.length.toFixed(2)} mm\n`;
+                    output += `  Computed f1: ${result.computedFreq.toFixed(2)} Hz\n`;
+                    output += `  Error: ${result.errorCents >= 0 ? '+' : ''}${result.errorCents.toFixed(2)} cents\n`;
+                    output += `  Iterations: ${result.iterations}\n`;
+                    
+                    if (Math.abs(result.errorCents) < 5) {
+                        output += `\n✓ Excellent accuracy (within ±5 cents)`;
+                    } else if (Math.abs(result.errorCents) < 10) {
+                        output += `\n⚠ Good accuracy (within ±10 cents)`;
+                    }
+                    
+                    outputDiv.textContent = output;
+                }, 100);
+            } catch (error) {
+                outputDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        // Optimization Step 1: Find bar length
+        function runOptimizationStep1() {
+            const noteInput = document.getElementById('opt-note').value.trim();
+            const materialKey = document.getElementById('opt-material').value;
+            
+            const outputDiv = document.getElementById('opt-step1-output');
+            outputDiv.textContent = 'Step 1: Finding optimal bar length...';
+            
+            try {
+                const targetFreq = noteToFrequency(noteInput);
+                if (!targetFreq) {
+                    outputDiv.textContent = 'Invalid note format.';
+                    return;
+                }
+                
+                const material = MATERIALS[materialKey];
+                const width = 38;  // mm
+                const thickness = 25;  // mm
+                
+                setTimeout(() => {
+                    const result = findOptimalLength(
+                        targetFreq,
+                        width,
+                        thickness,
+                        material,
+                        200, 800, 1.0, 50, 80
+                    );
+                    
+                    // Store in global state
+                    optimizationState.barLength = result.length;
+                    optimizationState.material = material;
+                    optimizationState.targetFreq = targetFreq;
+                    optimizationState.targetNote = noteInput;
+                    
+                    let output = `✓ Step 1 Complete!\n\n`;
+                    output += `Target: ${noteInput} (${targetFreq.toFixed(2)} Hz)\n`;
+                    output += `Material: ${material.name}\n`;
+                    output += `Optimal length: ${result.length.toFixed(2)} mm\n`;
+                    output += `Computed f1: ${result.computedFreq.toFixed(2)} Hz\n`;
+                    output += `Error: ${result.errorCents >= 0 ? '+' : ''}${result.errorCents.toFixed(2)} cents\n\n`;
+                    output += `Ready for Step 2: Evolutionary optimization`;
+                    
+                    outputDiv.textContent = output;
+                }, 100);
+            } catch (error) {
+                outputDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        // Optimization Step 2: Run EA optimization
+        function runOptimizationStep2() {
+            if (!optimizationState.barLength) {
+                document.getElementById('opt-step2-output').textContent = 
+                    'Please run Step 1 first to find the optimal bar length.';
+                return;
+            }
+            
+            const presetIdx = parseInt(document.getElementById('opt-preset').value);
+            const numCuts = parseInt(document.getElementById('opt-num-cuts').value);
+            const outputDiv = document.getElementById('opt-step2-output');
+            const button = document.getElementById('opt-step2-btn');
+            
+            button.disabled = true;
+            outputDiv.textContent = 'Step 2: Running evolutionary optimization...\nThis may take a minute...';
+            
+            try {
+                const preset = TUNING_PRESETS[presetIdx];
+                const targetFreqs = calculateTargetFrequencies(preset.ratios, optimizationState.targetFreq);
+                
+                // Create bar parameters
+                const barLength_m = optimizationState.barLength / 1000;
+                const width_m = 38 / 1000;
+                const thickness_m = 25 / 1000;
+                const minHeight_m = thickness_m * 0.4;
+                
+                const bar = new BarParameters(barLength_m, width_m, thickness_m, minHeight_m);
+                
+                // Configure EA with small parameters for demo
+                const eaParams = getDefaultEAParameters(numCuts);
+                eaParams.population_size = 15;
+                eaParams.num_generations = 8;
+                eaParams.num_elements = 40;
+                
+                const progressUpdates = [];
+                
+                setTimeout(() => {
+                    const config = new EAConfig({
+                        bar: bar,
+                        material: optimizationState.material,
+                        targetFrequencies: targetFreqs,
+                        numCuts: numCuts,
+                        penaltyType: 'none',
+                        penaltyWeight: 0.0,
+                        eaParams: eaParams,
+                        onProgress: (update) => {
+                            progressUpdates.push(update);
+                        }
+                    });
+                    
+                    const result = runEvolutionaryAlgorithm(config);
+                    optimizationState.optimizationResult = result;
+                    
+                    // Display results
+                    const cuts = genesToCuts(result.best_genes.slice(0, numCuts * 2));
+                    
+                    let output = `✓ Step 2 Complete!\n\n`;
+                    output += `Preset: ${preset.name} (${preset.ratios.join(':')})\n`;
+                    output += `Generations: ${result.generations_completed}\n`;
+                    output += `Best fitness: ${result.best_fitness.toFixed(4)}\n\n`;
+                    
+                    output += `Final frequencies:\n`;
+                    result.computed_frequencies.forEach((f, i) => {
+                        const target = targetFreqs[i];
+                        const error = result.errors_in_cents[i];
+                        output += `  f${i+1}: ${f.toFixed(2)} Hz (target: ${target.toFixed(2)} Hz, `;
+                        output += `error: ${error >= 0 ? '+' : ''}${error.toFixed(2)} cents)\n`;
+                    });
+                    
+                    output += `\nOptimized undercut geometry:\n`;
+                    cuts.forEach((cut, i) => {
+                        output += `  Cut ${i+1}: pos=${(cut.x*1000).toFixed(1)}mm, `;
+                        output += `width=${(cut.w*1000).toFixed(1)}mm, `;
+                        output += `depth=${(cut.d*1000).toFixed(1)}mm\n`;
+                    });
+                    
+                    output += `\nReady for Step 3: 3D FEM verification`;
+                    
+                    outputDiv.textContent = output;
+                    button.disabled = false;
+                }, 100);
+            } catch (error) {
+                outputDiv.textContent = `Error: ${error.message}`;
+                button.disabled = false;
+            }
+        }
+
         // Initialize on load
         displayMaterials();
         displayPresets();
         displayUniformBar();
         calculateTargetFreqs();
+        initializeMaterialSelectors();
+        initializePresetSelectors();
     </script>
 </body>
 </html>
