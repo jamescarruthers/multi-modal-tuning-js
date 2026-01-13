@@ -1,0 +1,7 @@
+# Reference folder build artifacts
+reference/node_modules/
+reference/dist/
+reference/dist-ssr/
+reference/wasm-physics/target/
+reference/.vscode/
+reference/*.local
