@@ -14,7 +14,9 @@ This is a port of the Python multi-modal bar tuning optimization library, provid
 
 ## Demo
 
-Open `demo.html` in a web browser to see an interactive demonstration of the library features:
+🎵 **[Live Demo on GitHub Pages](https://jamescarruthers.github.io/multi-modal-tuning-js/)** - Try it now!
+
+Alternatively, open `demo.html` or `index.html` locally in a web browser to see an interactive demonstration of the library features:
 
 - **Materials Database** - Browse all available materials with their physical properties
 - **Tuning Presets** - Explore standard tuning ratios and calculate target frequencies
