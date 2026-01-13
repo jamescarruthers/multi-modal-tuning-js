@@ -1,0 +1,21 @@
+# Python build artifacts
+reference/__pycache__/
+reference/**/__pycache__/
+reference/*.pyc
+reference/**/*.pyc
+reference/build/
+reference/dist/
+reference/*.egg-info/
+reference/.pytest_cache/
+
+# Output directories (generated files)
+reference/output/
+reference/test_*/
+
+# Nested reference directory build artifacts
+reference/reference/**/target/
+reference/reference/**/node_modules/
+reference/reference/**/dist/
+
+# Logs
+*.log
