@@ -151,14 +151,8 @@ class Matrix {
     }
 
     eig() {
-        // Simple power iteration for symmetric matrices
-        // This is a simplified implementation
-        const n = this.rows;
-        const maxIter = 100;
-        const tol = 1e-10;
-        
-        // For now, throw error - this should use a proper eigenvalue solver
-        // In practice, we'll use the sparse solver for large matrices
+        // Dense eigenvalue decomposition not implemented
+        // For our use case, we rely on the sparse solver for large matrices
         throw new Error('Dense eigenvalue decomposition not implemented - use sparse solver');
     }
 }
@@ -208,6 +202,55 @@ function matrixInverse(mat) {
     }
     
     return new Matrix(I);
+}
+
+/**
+ * Helper function to add regularization to sparse mass matrix
+ * @private
+ */
+function regularizeSparseMatrix(M, regularization = 1e-10) {
+    const n = M.shape[0];
+    const M_reg_data = [];
+    const M_reg_indices = [];
+    const M_reg_indptr = [0];
+    
+    for (let i = 0; i < n; i++) {
+        const start = M.indptr[i];
+        const end = M.indptr[i + 1];
+        
+        let diag_added = false;
+        for (let idx = start; idx < end; idx++) {
+            const j = M.indices[idx];
+            if (j === i) {
+                M_reg_data.push(M.data[idx] + regularization);
+                M_reg_indices.push(j);
+                diag_added = true;
+            } else if (j < i && !diag_added) {
+                M_reg_data.push(regularization);
+                M_reg_indices.push(i);
+                diag_added = true;
+                M_reg_data.push(M.data[idx]);
+                M_reg_indices.push(j);
+            } else {
+                M_reg_data.push(M.data[idx]);
+                M_reg_indices.push(j);
+            }
+        }
+        
+        if (!diag_added) {
+            M_reg_data.push(regularization);
+            M_reg_indices.push(i);
+        }
+        
+        M_reg_indptr.push(M_reg_data.length);
+    }
+    
+    return new csr_matrix({ 
+        data: M_reg_data, 
+        indices: M_reg_indices, 
+        indptr: M_reg_indptr, 
+        shape: M.shape 
+    });
 }
 
 /**
@@ -737,110 +780,14 @@ export function solve_eigenvalue_3d(K, M, num_modes, use_sparse = true) {
             eigenvalues = result.values;
         } catch (e) {
             // Fallback: add regularization
-            const n = K.shape[0];
-            const M_reg_data = [];
-            const M_reg_indices = [];
-            const M_reg_indptr = [0];
-            
-            // Copy M and add regularization
-            for (let i = 0; i < n; i++) {
-                const start = M.indptr[i];
-                const end = M.indptr[i + 1];
-                
-                let diag_added = false;
-                for (let idx = start; idx < end; idx++) {
-                    const j = M.indices[idx];
-                    if (j === i) {
-                        M_reg_data.push(M.data[idx] + 1e-10);
-                        M_reg_indices.push(j);
-                        diag_added = true;
-                    } else if (j < i && !diag_added) {
-                        M_reg_data.push(1e-10);
-                        M_reg_indices.push(i);
-                        diag_added = true;
-                        M_reg_data.push(M.data[idx]);
-                        M_reg_indices.push(j);
-                    } else {
-                        M_reg_data.push(M.data[idx]);
-                        M_reg_indices.push(j);
-                    }
-                }
-                
-                if (!diag_added) {
-                    M_reg_data.push(1e-10);
-                    M_reg_indices.push(i);
-                }
-                
-                M_reg_indptr.push(M_reg_data.length);
-            }
-            
-            const M_reg = new csr_matrix({ data: M_reg_data, indices: M_reg_indices, indptr: M_reg_indptr, shape: M.shape });
+            const M_reg = regularizeSparseMatrix(M, 1e-10);
             const result = eigsh(K, num_request, { M: M_reg, sigma, which: 'LM' });
             eigenvalues = result.values;
         }
     } else {
-        // Dense solver
-        const n = K.length;
-
-        // Regularize M
-        const M_reg = M.map(row => row.slice());
-        for (let i = 0; i < n; i++) {
-            M_reg[i][i] += 1e-12 * Math.max(Math.abs(M[i][i]), 1e-20);
-        }
-
-        try {
-            // Cholesky decomposition using ml-matrix
-            const M_matrix = new Matrix(M_reg);
-            const L = M_matrix.cholesky();
-            
-            // Solve L * L_inv = I to get L_inv
-            const L_inv = matrixInverse(L).to2DArray();
-            
-            // K_tilde = L_inv @ K @ L_inv.T
-            const K_matrix = new Matrix(K);
-            const L_inv_matrix = new Matrix(L_inv);
-            const K_tilde_matrix = L_inv_matrix.mmul(K_matrix).mmul(L_inv_matrix.transpose());
-            
-            // Make symmetric
-            const K_tilde = K_tilde_matrix.to2DArray();
-            for (let i = 0; i < n; i++) {
-                for (let j = i + 1; j < n; j++) {
-                    const avg = (K_tilde[i][j] + K_tilde[j][i]) / 2;
-                    K_tilde[i][j] = avg;
-                    K_tilde[j][i] = avg;
-                }
-            }
-            
-            // Eigenvalue decomposition
-            const K_tilde_final = new Matrix(K_tilde);
-            const evd = K_tilde_final.eig();
-            eigenvalues = evd.realEigenvalues;
-        } catch (e) {
-            // Fallback with more regularization
-            for (let i = 0; i < n; i++) {
-                M_reg[i][i] += 1e-8;
-            }
-            
-            const M_matrix = new Matrix(M_reg);
-            const L = M_matrix.cholesky();
-            const L_inv = matrixInverse(L).to2DArray();
-            const K_matrix = new Matrix(K);
-            const L_inv_matrix = new Matrix(L_inv);
-            const K_tilde_matrix = L_inv_matrix.mmul(K_matrix).mmul(L_inv_matrix.transpose());
-            const K_tilde = K_tilde_matrix.to2DArray();
-            
-            for (let i = 0; i < n; i++) {
-                for (let j = i + 1; j < n; j++) {
-                    const avg = (K_tilde[i][j] + K_tilde[j][i]) / 2;
-                    K_tilde[i][j] = avg;
-                    K_tilde[j][i] = avg;
-                }
-            }
-            
-            const K_tilde_final = new Matrix(K_tilde);
-            const evd = K_tilde_final.eig();
-            eigenvalues = evd.realEigenvalues;
-        }
+        // Dense solver not fully implemented
+        // For large FEM problems, always use sparse matrices (use_sparse=true)
+        throw new Error('Dense eigenvalue solver not implemented. Use sparse matrices (use_sparse=true) for realistic FEM problems.');
     }
 
     // Sort and filter
@@ -1042,130 +989,14 @@ export function solve_eigenvalue_3d_with_vectors(K, M, num_modes, use_sparse = t
             eigenvalues = result.values;
             eigenvectors = result.vectors;
         } catch (e) {
-            const n = K.shape[0];
-            const M_reg_data = [];
-            const M_reg_indices = [];
-            const M_reg_indptr = [0];
-            
-            for (let i = 0; i < n; i++) {
-                const start = M.indptr[i];
-                const end = M.indptr[i + 1];
-                
-                let diag_added = false;
-                for (let idx = start; idx < end; idx++) {
-                    const j = M.indices[idx];
-                    if (j === i) {
-                        M_reg_data.push(M.data[idx] + 1e-10);
-                        M_reg_indices.push(j);
-                        diag_added = true;
-                    } else if (j < i && !diag_added) {
-                        M_reg_data.push(1e-10);
-                        M_reg_indices.push(i);
-                        diag_added = true;
-                        M_reg_data.push(M.data[idx]);
-                        M_reg_indices.push(j);
-                    } else {
-                        M_reg_data.push(M.data[idx]);
-                        M_reg_indices.push(j);
-                    }
-                }
-                
-                if (!diag_added) {
-                    M_reg_data.push(1e-10);
-                    M_reg_indices.push(i);
-                }
-                
-                M_reg_indptr.push(M_reg_data.length);
-            }
-            
-            const M_reg = new csr_matrix({ data: M_reg_data, indices: M_reg_indices, indptr: M_reg_indptr, shape: M.shape });
+            const M_reg = regularizeSparseMatrix(M, 1e-10);
             const result = eigsh(K, num_request, { M: M_reg, sigma, which: 'LM' });
             eigenvalues = result.values;
             eigenvectors = result.vectors;
         }
     } else {
-        const n = K.length;
-        const M_reg = M.map(row => row.slice());
-        for (let i = 0; i < n; i++) {
-            M_reg[i][i] += 1e-12 * Math.max(Math.abs(M[i][i]), 1e-20);
-        }
-
-        try {
-            const M_matrix = new Matrix(M_reg);
-            const L = M_matrix.cholesky();
-            const L_inv = matrixInverse(L).to2DArray();
-            const K_matrix = new Matrix(K);
-            const L_inv_matrix = new Matrix(L_inv);
-            const K_tilde_matrix = L_inv_matrix.mmul(K_matrix).mmul(L_inv_matrix.transpose());
-            const K_tilde = K_tilde_matrix.to2DArray();
-            
-            for (let i = 0; i < n; i++) {
-                for (let j = i + 1; j < n; j++) {
-                    const avg = (K_tilde[i][j] + K_tilde[j][i]) / 2;
-                    K_tilde[i][j] = avg;
-                    K_tilde[j][i] = avg;
-                }
-            }
-            
-            const K_tilde_final = new Matrix(K_tilde);
-            const evd = K_tilde_final.eig();
-            eigenvalues = evd.realEigenvalues;
-            
-            // Transform eigenvectors back
-            const eigenvectors_tilde = evd.eigenvectorMatrix.to2DArray();
-            const L_inv_T = new Matrix(L_inv).transpose().to2DArray();
-            eigenvectors = [];
-            for (let j = 0; j < eigenvectors_tilde[0].length; j++) {
-                const col = [];
-                for (let i = 0; i < n; i++) {
-                    let sum = 0;
-                    for (let k = 0; k < n; k++) {
-                        sum += L_inv_T[i][k] * eigenvectors_tilde[k][j];
-                    }
-                    col.push(sum);
-                }
-                eigenvectors.push(col);
-            }
-        } catch (e) {
-            for (let i = 0; i < n; i++) {
-                M_reg[i][i] += 1e-8;
-            }
-            
-            const M_matrix = new Matrix(M_reg);
-            const L = M_matrix.cholesky();
-            const L_inv = matrixInverse(L).to2DArray();
-            const K_matrix = new Matrix(K);
-            const L_inv_matrix = new Matrix(L_inv);
-            const K_tilde_matrix = L_inv_matrix.mmul(K_matrix).mmul(L_inv_matrix.transpose());
-            const K_tilde = K_tilde_matrix.to2DArray();
-            
-            for (let i = 0; i < n; i++) {
-                for (let j = i + 1; j < n; j++) {
-                    const avg = (K_tilde[i][j] + K_tilde[j][i]) / 2;
-                    K_tilde[i][j] = avg;
-                    K_tilde[j][i] = avg;
-                }
-            }
-            
-            const K_tilde_final = new Matrix(K_tilde);
-            const evd = K_tilde_final.eig();
-            eigenvalues = evd.realEigenvalues;
-            
-            const eigenvectors_tilde = evd.eigenvectorMatrix.to2DArray();
-            const L_inv_T = new Matrix(L_inv).transpose().to2DArray();
-            eigenvectors = [];
-            for (let j = 0; j < eigenvectors_tilde[0].length; j++) {
-                const col = [];
-                for (let i = 0; i < n; i++) {
-                    let sum = 0;
-                    for (let k = 0; k < n; k++) {
-                        sum += L_inv_T[i][k] * eigenvectors_tilde[k][j];
-                    }
-                    col.push(sum);
-                }
-                eigenvectors.push(col);
-            }
-        }
+        // Dense solver not fully implemented
+        throw new Error('Dense eigenvalue solver not implemented. Use sparse matrices (use_sparse=true) for realistic FEM problems.');
     }
 
     // Sort by eigenvalue

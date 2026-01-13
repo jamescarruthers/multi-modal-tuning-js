@@ -115,13 +115,17 @@ test('compute_hex8_matrices - creates 24x24 matrices', () => {
     // Check symmetry of stiffness matrix (with reasonable tolerance for numerical errors)
     for (let i = 0; i < 24; i++) {
         for (let j = 0; j < 24; j++) {
-            const diff = Math.abs(Ke[i][j] - Ke[j][i]);
-            const magnitude = Math.max(Math.abs(Ke[i][j]), Math.abs(Ke[j][i]));
-            const relativeDiff = magnitude > 0 ? diff / magnitude : diff;
-            assert.ok(diff < 1e-6 || relativeDiff < 1e-10, 
-                `Ke[${i}][${j}]=${Ke[i][j]} != Ke[${j}][${i}]=${Ke[j][i]}, diff=${diff}, rel=${relativeDiff}`);
-            assert.ok(diff < 1e-6 || relativeDiff < 1e-10,
-                `Me[${i}][${j}]=${Me[i][j]} != Me[${j}][${i}]=${Me[j][i]}`);
+            const diffK = Math.abs(Ke[i][j] - Ke[j][i]);
+            const magnitudeK = Math.max(Math.abs(Ke[i][j]), Math.abs(Ke[j][i]));
+            const relativeDiffK = magnitudeK > 0 ? diffK / magnitudeK : diffK;
+            assert.ok(diffK < 1e-6 || relativeDiffK < 1e-10, 
+                `Ke[${i}][${j}]=${Ke[i][j]} != Ke[${j}][${i}]=${Ke[j][i]}, diff=${diffK}, rel=${relativeDiffK}`);
+            
+            const diffM = Math.abs(Me[i][j] - Me[j][i]);
+            const magnitudeM = Math.max(Math.abs(Me[i][j]), Math.abs(Me[j][i]));
+            const relativeDiffM = magnitudeM > 0 ? diffM / magnitudeM : diffM;
+            assert.ok(diffM < 1e-6 || relativeDiffM < 1e-10,
+                `Me[${i}][${j}]=${Me[i][j]} != Me[${j}][${i}]=${Me[j][i]}, diff=${diffM}, rel=${relativeDiffM}`);
         }
     }
 });
