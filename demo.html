@@ -253,6 +253,57 @@
             line-height: 1.6;
         }
 
+        .progress-container {
+            background: #f0f0f0;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .progress-container.active {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            font-size: 14px;
+            color: #555;
+            margin: 5px 0;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         @media (max-width: 768px) {
             h1 {
                 font-size: 1.8em;
@@ -425,7 +476,16 @@
                         <input type="number" id="bl-thickness" value="25" min="5" max="50" step="1">
                     </div>
                 </div>
-                <button onclick="findBarLength()">Find Optimal Length</button>
+                <button onclick="findBarLength()" id="bl-find-btn">Find Optimal Length</button>
+                <div class="progress-container" id="bl-progress">
+                    <div class="progress-text" id="bl-progress-text">
+                        <span class="spinner"></span>Searching for optimal length...
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-bar-fill" id="bl-progress-bar"></div>
+                    </div>
+                    <div class="progress-text" id="bl-progress-details"></div>
+                </div>
                 <div id="barlength-output" class="output"></div>
                 
                 <div style="margin-top: 30px;">
@@ -460,7 +520,16 @@
                         <select id="opt-material"></select>
                     </div>
                 </div>
-                <button onclick="runOptimizationStep1()">Run Step 1: Find Length</button>
+                <button onclick="runOptimizationStep1()" id="opt-step1-btn">Run Step 1: Find Length</button>
+                <div class="progress-container" id="opt-step1-progress">
+                    <div class="progress-text" id="opt-step1-progress-text">
+                        <span class="spinner"></span>Finding optimal bar length...
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-bar-fill" id="opt-step1-progress-bar"></div>
+                    </div>
+                    <div class="progress-text" id="opt-step1-progress-details"></div>
+                </div>
                 <div id="opt-step1-output" class="output"></div>
 
                 <h2 style="margin-top: 30px;">Step 2: Evolutionary Algorithm Optimization</h2>
@@ -483,6 +552,15 @@
                     <strong>Note:</strong> Optimization is computationally intensive. For demonstration purposes, this uses a small population and few generations. Production work would use larger parameters.
                 </p>
                 <button onclick="runOptimizationStep2()" id="opt-step2-btn">Run Step 2: Optimize Geometry</button>
+                <div class="progress-container" id="opt-step2-progress">
+                    <div class="progress-text" id="opt-step2-progress-text">
+                        <span class="spinner"></span>Running evolutionary optimization...
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-bar-fill" id="opt-step2-progress-bar"></div>
+                    </div>
+                    <div class="progress-text" id="opt-step2-progress-details"></div>
+                </div>
                 <div id="opt-step2-output" class="output"></div>
 
                 <h2 style="margin-top: 30px;">Step 3: 3D FEM Verification</h2>
@@ -811,12 +889,21 @@
             const thickness = parseFloat(document.getElementById('bl-thickness').value);
             
             const outputDiv = document.getElementById('barlength-output');
-            outputDiv.textContent = 'Searching for optimal length...';
+            const progressContainer = document.getElementById('bl-progress');
+            const progressBar = document.getElementById('bl-progress-bar');
+            const progressDetails = document.getElementById('bl-progress-details');
+            const button = document.getElementById('bl-find-btn');
+            
+            outputDiv.textContent = '';
+            progressContainer.classList.add('active');
+            button.disabled = true;
             
             try {
                 const targetFreq = noteToFrequency(noteInput);
                 if (!targetFreq) {
                     outputDiv.textContent = 'Invalid note format. Use format like A3, C4, C#5';
+                    progressContainer.classList.remove('active');
+                    button.disabled = false;
                     return;
                 }
                 
@@ -833,7 +920,23 @@
                         800,  // max length (mm)
                         1.0,  // tolerance (cents)
                         50,   // max iterations
-                        80    // num elements
+                        80,   // num elements
+                        undefined, // analysis mode (default BEAM_2D)
+                        0.0,  // frequency offset
+                        2,    // ny
+                        3,    // nz
+                        (progress) => {
+                            // Update progress bar
+                            const percentage = (progress.iteration / progress.maxIterations) * 100;
+                            progressBar.style.width = percentage + '%';
+                            
+                            // Update progress details
+                            progressDetails.textContent = 
+                                `Iteration ${progress.iteration}/${progress.maxIterations}: ` +
+                                `Length ${progress.currentLength.toFixed(2)}mm, ` +
+                                `Frequency ${progress.currentFrequency.toFixed(2)}Hz, ` +
+                                `Error ${progress.errorCents >= 0 ? '+' : ''}${progress.errorCents.toFixed(2)} cents`;
+                        }
                     );
                     
                     let output = `Target: ${noteInput} (${targetFreq.toFixed(2)} Hz)\n`;
@@ -853,9 +956,13 @@
                     }
                     
                     outputDiv.textContent = output;
+                    progressContainer.classList.remove('active');
+                    button.disabled = false;
                 }, 100);
             } catch (error) {
                 outputDiv.textContent = `Error: ${error.message}`;
+                progressContainer.classList.remove('active');
+                button.disabled = false;
             }
         }
 
@@ -865,12 +972,21 @@
             const materialKey = document.getElementById('opt-material').value;
             
             const outputDiv = document.getElementById('opt-step1-output');
-            outputDiv.textContent = 'Step 1: Finding optimal bar length...';
+            const progressContainer = document.getElementById('opt-step1-progress');
+            const progressBar = document.getElementById('opt-step1-progress-bar');
+            const progressDetails = document.getElementById('opt-step1-progress-details');
+            const button = document.getElementById('opt-step1-btn');
+            
+            outputDiv.textContent = '';
+            progressContainer.classList.add('active');
+            button.disabled = true;
             
             try {
                 const targetFreq = noteToFrequency(noteInput);
                 if (!targetFreq) {
                     outputDiv.textContent = 'Invalid note format.';
+                    progressContainer.classList.remove('active');
+                    button.disabled = false;
                     return;
                 }
                 
@@ -884,7 +1000,22 @@
                         width,
                         thickness,
                         material,
-                        200, 800, 1.0, 50, 80
+                        200, 800, 1.0, 50, 80,
+                        undefined, // analysis mode
+                        0.0,  // frequency offset
+                        2,    // ny
+                        3,    // nz
+                        (progress) => {
+                            // Update progress bar
+                            const percentage = (progress.iteration / progress.maxIterations) * 100;
+                            progressBar.style.width = percentage + '%';
+                            
+                            // Update progress details
+                            progressDetails.textContent = 
+                                `Iteration ${progress.iteration}/${progress.maxIterations}: ` +
+                                `Length ${progress.currentLength.toFixed(2)}mm, ` +
+                                `Error ${progress.errorCents >= 0 ? '+' : ''}${progress.errorCents.toFixed(2)} cents`;
+                        }
                     );
                     
                     // Store in global state
@@ -902,9 +1033,13 @@
                     output += `Ready for Step 2: Evolutionary optimization`;
                     
                     outputDiv.textContent = output;
+                    progressContainer.classList.remove('active');
+                    button.disabled = false;
                 }, 100);
             } catch (error) {
                 outputDiv.textContent = `Error: ${error.message}`;
+                progressContainer.classList.remove('active');
+                button.disabled = false;
             }
         }
 
@@ -919,10 +1054,14 @@
             const presetIdx = parseInt(document.getElementById('opt-preset').value);
             const numCuts = parseInt(document.getElementById('opt-num-cuts').value);
             const outputDiv = document.getElementById('opt-step2-output');
+            const progressContainer = document.getElementById('opt-step2-progress');
+            const progressBar = document.getElementById('opt-step2-progress-bar');
+            const progressDetails = document.getElementById('opt-step2-progress-details');
             const button = document.getElementById('opt-step2-btn');
             
             button.disabled = true;
-            outputDiv.textContent = 'Step 2: Running evolutionary optimization...\nThis may take a minute...';
+            outputDiv.textContent = '';
+            progressContainer.classList.add('active');
             
             try {
                 const preset = TUNING_PRESETS[presetIdx];
@@ -942,8 +1081,6 @@
                 eaParams.num_generations = 8;
                 eaParams.num_elements = 40;
                 
-                const progressUpdates = [];
-                
                 setTimeout(() => {
                     const config = new EAConfig({
                         bar: bar,
@@ -954,7 +1091,16 @@
                         penaltyWeight: 0.0,
                         eaParams: eaParams,
                         onProgress: (update) => {
-                            progressUpdates.push(update);
+                            // Update progress bar
+                            const percentage = (update.generation / eaParams.num_generations) * 100;
+                            progressBar.style.width = percentage + '%';
+                            
+                            // Update progress details
+                            const maxError = Math.max(...update.errors_in_cents.map(Math.abs));
+                            progressDetails.textContent = 
+                                `Generation ${update.generation}/${eaParams.num_generations}: ` +
+                                `Fitness ${update.best_fitness.toFixed(4)}, ` +
+                                `Max error ${maxError.toFixed(2)} cents`;
                         }
                     });
                     
@@ -987,10 +1133,12 @@
                     output += `\nReady for Step 3: 3D FEM verification`;
                     
                     outputDiv.textContent = output;
+                    progressContainer.classList.remove('active');
                     button.disabled = false;
                 }, 100);
             } catch (error) {
                 outputDiv.textContent = `Error: ${error.message}`;
+                progressContainer.classList.remove('active');
                 button.disabled = false;
             }
         }

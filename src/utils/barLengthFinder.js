@@ -106,6 +106,7 @@ export function computeF1ForUniformBar(
  * @param {number} frequencyOffset - Calibration offset (e.g., -0.05 to aim 5% lower)
  * @param {number} ny - Number of elements in width direction (3D only)
  * @param {number} nz - Number of elements in thickness direction (3D only)
+ * @param {Function} onProgress - Optional callback for progress updates
  * @returns {LengthSearchResult} Search result with optimal length and computed frequency
  */
 export function findOptimalLength(
@@ -121,7 +122,8 @@ export function findOptimalLength(
     analysisMode = AnalysisMode.BEAM_2D,
     frequencyOffset = 0.0,
     ny = 2,
-    nz = 3
+    nz = 3,
+    onProgress = null
 ) {
     // Apply frequency offset for calibration
     const effectiveTarget = targetFrequency * (1 + frequencyOffset);
@@ -170,6 +172,18 @@ export function findOptimalLength(
             bestLength = mid;
             bestFreq = f1;
             bestError = reportErrorCents;
+        }
+
+        // Progress callback
+        if (onProgress) {
+            onProgress({
+                iteration: iterations,
+                maxIterations: maxIterations,
+                currentLength: mid,
+                currentFrequency: f1,
+                errorCents: reportErrorCents,
+                searchRange: high - low
+            });
         }
 
         // Check if within tolerance (vs effective target for search)

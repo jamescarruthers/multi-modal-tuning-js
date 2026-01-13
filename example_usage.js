@@ -238,7 +238,20 @@ const lengthResult = findOptimalLength(
     600,  // max length (mm)
     1.0,  // tolerance (cents)
     50,   // max iterations
-    80    // num elements
+    80,   // num elements
+    undefined, // analysis mode (default BEAM_2D)
+    0.0,  // frequency offset
+    2,    // ny
+    3,    // nz
+    (progress) => {
+        // Progress callback - show every 5th iteration
+        if (progress.iteration % 5 === 0 || progress.iteration === 1) {
+            console.log(`  Iteration ${progress.iteration}: ` +
+                       `Length ${progress.currentLength.toFixed(2)}mm, ` +
+                       `Frequency ${progress.currentFrequency.toFixed(2)}Hz, ` +
+                       `Error ${progress.errorCents >= 0 ? '+' : ''}${progress.errorCents.toFixed(2)} cents`);
+        }
+    }
 );
 
 console.log(`\nResults:`);
