@@ -12,5 +12,10 @@ reference/.pytest_cache/
 reference/output/
 reference/test_*/
 
+# Nested reference directory build artifacts
+reference/reference/**/target/
+reference/reference/**/node_modules/
+reference/reference/**/dist/
+
 # Logs
 *.log
