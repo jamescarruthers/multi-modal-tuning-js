@@ -22,6 +22,17 @@ Alternatively, open `demo.html` or `index.html` locally in a web browser to see 
 - **Tuning Presets** - Explore standard tuning ratios and calculate target frequencies
 - **Note Converter** - Convert between note names and frequencies, generate note ranges
 - **Frequency Calculator** - Calculate tuning errors and analyze frequency relationships
+- **Bar Length Finder** - Find optimal bar length for target fundamental frequency (Step 1)
+- **Optimization Workflow** - Complete 3-step optimization path:
+  1. Bar length finding using binary search
+  2. Evolutionary algorithm for undercut geometry optimization
+  3. 3D FEM verification of final design
+
+Run `example_usage.js` to see comprehensive examples including the complete optimization workflow:
+
+```bash
+node example_usage.js
+```
 
 ## Quick Start
 
