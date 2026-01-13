@@ -1,9 +1,16 @@
-# Rust build artifacts
-reference/wasm-physics/target/
-reference/node_modules/
-
-# Build output
+# Python build artifacts
+reference/__pycache__/
+reference/**/__pycache__/
+reference/*.pyc
+reference/**/*.pyc
+reference/build/
 reference/dist/
+reference/*.egg-info/
+reference/.pytest_cache/
+
+# Output directories (generated files)
+reference/output/
+reference/test_*/
 
 # Logs
 *.log

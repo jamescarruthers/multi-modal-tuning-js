@@ -1,90 +1,122 @@
-# Multi-Modal Bar Tuning
+# Multi-Modal Bar Tuning Optimization
 
-A web-based tool for optimizing the frequency ratios of vibrating bars (such as marimba, xylophone, or vibraphone bars) using evolutionary algorithms and finite element analysis.
+A Python library for optimizing percussion bar undercuts to achieve target harmonic frequencies using evolutionary algorithms and Timoshenko beam FEM.
 
 ## Overview
 
-This application helps instrument makers and acoustics researchers design tuned percussion bars with specific frequency ratios between vibrational modes. By strategically removing material (creating an undercut profile), the natural frequencies of the bar can be adjusted to achieve harmonic or other desired tuning relationships.
+This library implements the multi-modal tuning optimization algorithm for percussion instruments (marimbas, vibraphones, xylophones). It uses:
 
-The optimization uses:
-- **Finite Element Method (FEM)** for computing bar vibration frequencies
-- **Evolutionary Algorithm (EA)** for finding optimal cut profiles
-- **WebAssembly (Rust/WASM)** for high-performance parallel computation
+- **Timoshenko beam theory** for accurate frequency computation (including shear deformation effects)
+- **Finite Element Method (FEM)** for solving the generalized eigenvalue problem
+- **Evolutionary Algorithm** with elitism, crossover, and mutation for optimization
+- **Multithreading** for parallel fitness evaluation
 
 ## Features
 
-- **Multiple tuning presets**: Harmonic (1:4:10), Gamelan, Marimba, and more
-- **Custom tuning ratios**: Define your own frequency relationships
-- **Material library**: Metals (aluminum, brass, steel) and woods (rosewood, padauk, maple)
-- **Adjustable constraints**: Control cut width, depth, and length trimming/extension
-- **Real-time visualization**: See the bar profile evolve during optimization
-- **Parallel processing**: WASM with multi-threading for fast computation
-- **Configurable stopping criteria**: Set target error threshold for early termination
+- Optimize rectangular undercuts to achieve target frequency ratios
+- Support for 17+ materials (metals and woods)
+- Common tuning presets (1:4:10 marimba, 1:3:6 xylophone, etc.)
+- Customizable penalty functions (volume, roughness)
+- Bar length finder utility for instrument design
+- Note/frequency conversion utilities
 
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- Rust toolchain with `wasm-pack` (for building WASM module)
-
-### Installation
+## Installation
 
 ```bash
-# Install dependencies
-npm install
-
-# Build and run development server
-npm run dev
+pip install -r requirements.txt
 ```
 
-### Building for Production
+Or install in development mode:
 
 ```bash
-npm run build
+pip install -e .
 ```
 
-## Usage
+## Quick Start
 
-1. **Set bar dimensions**: Length, width, and thickness in millimeters
-2. **Select material**: Choose from metals or woods, or use custom properties
-3. **Choose tuning target**: Select a preset or enter custom frequency ratios
-4. **Set fundamental frequency**: The target f₁ (can enter as note name like "C4")
-5. **Configure optimization**: Number of cuts, constraints, and algorithm parameters
-6. **Run optimization**: Click "Start" and watch the profile evolve
-7. **Review results**: Check achieved frequencies and export the profile
+```python
+from multi_modal_tuning import (
+    BarParameters,
+    run_evolutionary_algorithm,
+    get_default_ea_parameters,
+    EAConfig,
+    MATERIALS,
+    get_preset,
+    calculate_target_frequencies,
+)
 
-## How It Works
+# Define bar parameters (500mm x 50mm x 20mm)
+bar = BarParameters(
+    L=0.5,      # 500mm length
+    b=0.05,     # 50mm width
+    h0=0.02,    # 20mm thickness
+    hMin=0.002  # 2mm minimum thickness
+)
 
-The bar is modeled as a Timoshenko beam with variable cross-section. The optimizer searches for the best undercut profile by:
+# Select material and tuning
+material = MATERIALS["rosewood"]
+preset = get_preset("1:4:10")
+target_frequencies = calculate_target_frequencies(preset.ratios, fundamental_hz=220)
 
-1. **Encoding**: Each solution is a genome representing cut positions (λ) and depths (h)
-2. **Evaluation**: FEM computes the first N natural frequencies for each profile
-3. **Fitness**: Error is calculated as the weighted deviation from target frequency ratios
-4. **Evolution**: Tournament selection, crossover, and mutation create new generations
-5. **Termination**: Stops when target error is reached or max generations exceeded
+# Configure and run optimization
+ea_params = get_default_ea_parameters(num_cuts=3)
+config = EAConfig(
+    bar=bar,
+    material=material,
+    target_frequencies=target_frequencies,
+    num_cuts=3,
+    ea_params=ea_params,
+)
 
-## Project Structure
-
+result = run_evolutionary_algorithm(config)
+print(f"Tuning error: {result.tuning_error:.4f}%")
 ```
-multi-modal-tuning/
-├── src/
-│   ├── components/       # React UI components
-│   ├── data/             # Materials and tuning presets
-│   ├── optimization/     # Evolutionary algorithm
-│   ├── physics/          # FEM and WASM bridge
-│   ├── types/            # TypeScript interfaces
-│   └── workers/          # Web Worker for background optimization
-├── wasm_physics/         # Rust WASM module for parallel FEM
-└── public/
-```
 
-## References
+## API Reference
 
-This tool is based on the methodology described in:
+### Types
 
-> Soares, F., Music, J., & Antunes, J. (2020). *Computational optimization of marimba bar profiles for targeted modal tuning*. [HAL-04240657](https://hal.science/hal-04240657v1/file/soares2020.pdf)
+- `Material` - Material properties (E, rho, nu)
+- `BarParameters` - Bar geometry (L, b, h0, hMin)
+- `Cut` - Single rectangular cut (lambda, h)
+- `EAParameters` - Evolutionary algorithm parameters
+- `OptimizationResult` - Results from optimization
+
+### Functions
+
+- `run_evolutionary_algorithm(config)` - Main optimization function
+- `run_adaptive_evolution(config)` - Variant with self-adaptive mutation
+- `get_default_ea_parameters(num_cuts)` - Get default EA parameters
+- `compute_frequencies(...)` - Compute natural frequencies via FEM
+- `find_optimal_length(...)` - Find bar length for target frequency
+
+### Data
+
+- `MATERIALS` - Dictionary of material properties
+- `TUNING_PRESETS` - Common tuning ratio presets
+
+## Algorithm Details
+
+The optimization uses a population-based evolutionary algorithm:
+
+1. **Initialization**: Random population with optional seeding
+2. **Evaluation**: Batch FEM frequency computation (multithreaded)
+3. **Selection**: Roulette wheel or tournament selection
+4. **Crossover**: Heuristic crossover (Eq. 16)
+5. **Mutation**: Uniform or self-adaptive Gaussian mutation (Eq. 17-18)
+6. **Elitism**: Best individuals preserved each generation
+
+### Physics Model
+
+- Timoshenko beam elements (4 DOF per element)
+- Free-free boundary conditions
+- Quadratic interpolation at discontinuities
+- Generalized eigenvalue problem: K*φ = λ*M*φ
 
 ## License
 
-MIT
+MIT License - see LICENSE file for details.
+
+## References
+
+Based on the multi-modal tuning optimization research for percussion instruments.
