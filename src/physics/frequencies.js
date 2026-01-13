@@ -4,6 +4,11 @@
  * Main functions for computing natural frequencies of undercut bars
  * using the FEM model. Supports both 2D Timoshenko beam and 3D solid
  * element analysis.
+ * 
+ * Note on async behavior:
+ * - BEAM_2D mode is synchronous and returns Array<number> directly
+ * - SOLID_3D mode is asynchronous and returns Promise<Array<number>>
+ * - For consistent behavior, use batchComputeFitnessAsync which handles both modes
  */
 
 import { AnalysisMode } from '../types.js';
@@ -14,6 +19,12 @@ import { compute_frequencies_3d } from './fem3d.js';
 /**
  * Compute natural frequencies for a bar with given element heights.
  * 
+ * **Important**: This function returns different types based on analysis mode:
+ * - BEAM_2D: Returns Array<number> (synchronous)
+ * - SOLID_3D: Returns Promise<Array<number>> (asynchronous)
+ * 
+ * For consistent async handling, use the async versions of frequency computation.
+ * 
  * @param {Array<number>} elementHeights - Height of each finite element (m)
  * @param {number} le - Length of each element (m)
  * @param {number} b - Bar width (m)
@@ -21,7 +32,7 @@ import { compute_frequencies_3d } from './fem3d.js';
  * @param {number} rho - Density (kg/m^3)
  * @param {number} nu - Poisson's ratio
  * @param {number} numModes - Number of modes to extract
- * @param {string} analysisMode - BEAM_2D (fast) or SOLID_3D (accurate)
+ * @param {string} analysisMode - BEAM_2D (fast, sync) or SOLID_3D (accurate, async)
  * @param {number} ny - Number of elements in width direction (3D only)
  * @param {number} nz - Number of elements in thickness direction (3D only)
  * @returns {Array<number>|Promise<Array<number>>} List of natural frequencies in Hz
@@ -196,8 +207,10 @@ function computeSingleFitness(
         
         // Handle Promise for 3D analysis
         if (frequencies instanceof Promise) {
-            // For sync context, we can't await, so return Infinity
-            // Batch processing should handle this case separately
+            // For sync context, we can't await, so return Infinity.
+            // This is expected behavior when batchComputeFitness is called with SOLID_3D mode.
+            // For 3D analysis, use batchComputeFitnessAsync instead which properly handles async.
+            // Returning Infinity ensures the sync fitness computation doesn't silently use invalid data.
             return Infinity;
         }
     } catch (e) {
@@ -229,6 +242,10 @@ function computeSingleFitness(
 /**
  * Batch compute fitness for entire population.
  * 
+ * **Important**: This function is synchronous and only works correctly with BEAM_2D mode.
+ * For SOLID_3D (async) mode, use batchComputeFitnessAsync instead.
+ * If called with SOLID_3D mode, individuals will receive Infinity fitness.
+ * 
  * Note: Unlike the Python version, this does not use multithreading.
  * JavaScript is single-threaded, but we could use Web Workers for true parallelism.
  * 
@@ -240,7 +257,7 @@ function computeSingleFitness(
  * @param {number} f1Priority - Weight multiplier for f1 (>1 prioritizes f1)
  * @param {number} numCuts - Number of cuts per individual
  * @param {number} maxWorkers - Maximum number of worker threads (ignored in JS, kept for API compatibility)
- * @param {string} analysisMode - BEAM_2D (fast) or SOLID_3D (accurate)
+ * @param {string} analysisMode - BEAM_2D (fast, sync) or SOLID_3D (will return Infinity - use async version)
  * @param {number} ny - Number of elements in width direction (3D only)
  * @param {number} nz - Number of elements in thickness direction (3D only)
  * @returns {Array<number>} List of fitness values for each individual
