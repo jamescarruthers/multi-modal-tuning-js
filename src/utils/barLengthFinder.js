@@ -87,6 +87,17 @@ export function computeF1ForUniformBar(
 }
 
 /**
+ * Progress update object for bar length finding.
+ * @typedef {Object} LengthSearchProgress
+ * @property {number} iteration - Current iteration number
+ * @property {number} maxIterations - Maximum number of iterations
+ * @property {number} currentLength - Current bar length being tested (mm)
+ * @property {number} currentFrequency - Computed frequency at current length (Hz)
+ * @property {number} errorCents - Frequency error in cents
+ * @property {number} searchRange - Remaining search range (mm)
+ */
+
+/**
  * Find optimal bar length for a target frequency using binary search.
  * 
  * Uses the fact that f1 decreases monotonically with length:
@@ -106,6 +117,7 @@ export function computeF1ForUniformBar(
  * @param {number} frequencyOffset - Calibration offset (e.g., -0.05 to aim 5% lower)
  * @param {number} ny - Number of elements in width direction (3D only)
  * @param {number} nz - Number of elements in thickness direction (3D only)
+ * @param {Function} onProgress - Optional callback for progress updates (receives LengthSearchProgress object)
  * @returns {LengthSearchResult} Search result with optimal length and computed frequency
  */
 export function findOptimalLength(
@@ -121,7 +133,8 @@ export function findOptimalLength(
     analysisMode = AnalysisMode.BEAM_2D,
     frequencyOffset = 0.0,
     ny = 2,
-    nz = 3
+    nz = 3,
+    onProgress = null
 ) {
     // Apply frequency offset for calibration
     const effectiveTarget = targetFrequency * (1 + frequencyOffset);
@@ -170,6 +183,18 @@ export function findOptimalLength(
             bestLength = mid;
             bestFreq = f1;
             bestError = reportErrorCents;
+        }
+
+        // Progress callback
+        if (onProgress) {
+            onProgress({
+                iteration: iterations,
+                maxIterations: maxIterations,
+                currentLength: mid,
+                currentFrequency: f1,
+                errorCents: reportErrorCents,
+                searchRange: high - low
+            });
         }
 
         // Check if within tolerance (vs effective target for search)
