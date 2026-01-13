@@ -1,0 +1,9 @@
+# Rust build artifacts
+reference/wasm-physics/target/
+reference/node_modules/
+
+# Build output
+reference/dist/
+
+# Logs
+*.log
