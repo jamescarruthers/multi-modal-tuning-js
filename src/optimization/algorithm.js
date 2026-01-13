@@ -213,6 +213,10 @@ export function runEvolutionaryAlgorithm(config) {
     const ny = eaParams.num_elements_y;
     const nz = eaParams.num_elements_z;
 
+    // Log optimization start
+    console.log(`[EA] Starting evolutionary algorithm optimization`);
+    console.log(`[EA] Population size: ${eaParams.population_size}, Max generations: ${eaParams.max_generations}`);
+
     // Report Generation 0: uncut bar baseline
     if (onProgress) {
         const uncutBar = createUncutBarIndividual(numCuts, bounds, bar.h0);
@@ -332,9 +336,12 @@ export function runEvolutionaryAlgorithm(config) {
 
         generation += 1;
 
+        // Log generation progress
+        const stats = calculatePopulationStats(population);
+        console.log(`[EA] Generation ${generation}/${eaParams.max_generations} | Population: ${population.length} | Best fitness: ${bestEver.fitness.toFixed(4)} | Avg fitness: ${stats.averageFitness.toFixed(4)}`);
+
         // Report progress
         if (onProgress) {
-            const stats = calculatePopulationStats(population);
             const freqData = computeFrequenciesAndErrors(
                 bestEver.genes, bar, material, targetFrequencies, eaParams.num_elements, numCuts,
                 analysisMode, ny, nz
@@ -431,6 +438,10 @@ export function runAdaptiveEvolution(config) {
     const ny = eaParams.num_elements_y;
     const nz = eaParams.num_elements_z;
 
+    // Log optimization start
+    console.log(`[EA-Adaptive] Starting adaptive evolutionary algorithm optimization`);
+    console.log(`[EA-Adaptive] Population size: ${eaParams.population_size}, Max generations: ${eaParams.max_generations}`);
+
     // Report Generation 0: uncut bar baseline
     if (onProgress) {
         const uncutBar = createUncutBarIndividual(numCuts, bounds, bar.h0);
@@ -517,8 +528,11 @@ export function runAdaptiveEvolution(config) {
 
         generation += 1;
 
+        // Log generation progress
+        const stats = calculatePopulationStats(population);
+        console.log(`[EA-Adaptive] Generation ${generation}/${eaParams.max_generations} | Population: ${population.length} | Best fitness: ${bestEver.fitness.toFixed(4)} | Avg fitness: ${stats.averageFitness.toFixed(4)}`);
+
         if (onProgress) {
-            const stats = calculatePopulationStats(population);
             const freqData = computeFrequenciesAndErrors(
                 bestEver.genes, bar, material, targetFrequencies, eaParams.num_elements, numCuts,
                 analysisMode, ny, nz
