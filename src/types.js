@@ -168,9 +168,10 @@ export class DetailedEvaluation {
 }
 
 /**
- * EA Configuration.
+ * EA Configuration (kept for type reference - use the one from optimization/algorithm.js).
+ * @deprecated Use EAConfig from optimization/algorithm.js instead
  */
-export class EAConfig {
+export class EAConfigBase {
     constructor(config = {}) {
         this.bar = config.bar;
         this.material = config.material;

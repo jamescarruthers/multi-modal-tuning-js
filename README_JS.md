@@ -120,15 +120,15 @@ Or use any modern web server. All major browsers support ES6 modules.
 - Note utilities (note-frequency conversion, MIDI, ranges)
 - 3D FEM analysis module
 - Interactive demo HTML
-
-### 🚧 In Progress / To Do
 - Bar profile generation
 - Frequency computation utilities
 - Timoshenko beam FEM
 - FEM assembly
 - Optimization algorithms (EA, crossover, mutation, selection)
 - Bar length finder
-- Visualization utilities
+
+### 🚧 To Do
+- Visualization utilities (bar diagrams - optional enhancement)
 
 ## Original Python Version
 
