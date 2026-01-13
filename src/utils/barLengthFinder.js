@@ -117,7 +117,7 @@ export function computeF1ForUniformBar(
  * @param {number} frequencyOffset - Calibration offset (e.g., -0.05 to aim 5% lower)
  * @param {number} ny - Number of elements in width direction (3D only)
  * @param {number} nz - Number of elements in thickness direction (3D only)
- * @param {function(LengthSearchProgress): void} onProgress - Optional callback for progress updates
+ * @param {Function} onProgress - Optional callback for progress updates (receives LengthSearchProgress object)
  * @returns {LengthSearchResult} Search result with optimal length and computed frequency
  */
 export function findOptimalLength(
