@@ -9,10 +9,206 @@
  * 3D effects become significant.
  */
 
-import { Matrix, inverse as matrixInverse } from 'ml-matrix';
 import { LilMatrix as lil_matrix } from '../../reference/lil_matrix.js';
 import { CsrMatrix as csr_matrix } from '../../reference/csr_matrix.js';
 import { eigsh } from '../../reference/sparse_linalg.js';
+
+/**
+ * Simple Matrix class for dense matrix operations
+ * This is a minimal implementation to replace ml-matrix for our needs
+ */
+class Matrix {
+    constructor(data) {
+        if (Array.isArray(data)) {
+            this.data = data.map(row => row.slice());
+            this.rows = data.length;
+            this.cols = data[0].length;
+        } else {
+            throw new Error('Matrix constructor expects 2D array');
+        }
+    }
+
+    to2DArray() {
+        return this.data.map(row => row.slice());
+    }
+
+    det() {
+        if (this.rows !== this.cols) {
+            throw new Error('Determinant requires square matrix');
+        }
+        return this._determinant(this.data);
+    }
+
+    _determinant(matrix) {
+        const n = matrix.length;
+        if (n === 1) return matrix[0][0];
+        if (n === 2) {
+            return matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0];
+        }
+        if (n === 3) {
+            return (
+                matrix[0][0] * (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1]) -
+                matrix[0][1] * (matrix[1][0] * matrix[2][2] - matrix[1][2] * matrix[2][0]) +
+                matrix[0][2] * (matrix[1][0] * matrix[2][1] - matrix[1][1] * matrix[2][0])
+            );
+        }
+        
+        // For larger matrices, use LU decomposition
+        const U = matrix.map(row => row.slice());
+        let sign = 1;
+        
+        for (let i = 0; i < n; i++) {
+            let maxRow = i;
+            for (let k = i + 1; k < n; k++) {
+                if (Math.abs(U[k][i]) > Math.abs(U[maxRow][i])) {
+                    maxRow = k;
+                }
+            }
+            
+            if (maxRow !== i) {
+                [U[i], U[maxRow]] = [U[maxRow], U[i]];
+                sign *= -1;
+            }
+            
+            if (Math.abs(U[i][i]) < 1e-10) return 0;
+            
+            for (let k = i + 1; k < n; k++) {
+                const factor = U[k][i] / U[i][i];
+                for (let j = i; j < n; j++) {
+                    U[k][j] -= factor * U[i][j];
+                }
+            }
+        }
+        
+        let result = sign;
+        for (let i = 0; i < n; i++) {
+            result *= U[i][i];
+        }
+        return result;
+    }
+
+    mmul(other) {
+        const B = other.data;
+        const m = this.rows;
+        const n = B[0].length;
+        const p = B.length;
+        
+        if (this.cols !== p) {
+            throw new Error('Dimension mismatch for matrix multiplication');
+        }
+        
+        const C = Array.from({ length: m }, () => new Array(n).fill(0));
+        
+        for (let i = 0; i < m; i++) {
+            for (let j = 0; j < n; j++) {
+                for (let k = 0; k < p; k++) {
+                    C[i][j] += this.data[i][k] * B[k][j];
+                }
+            }
+        }
+        
+        return new Matrix(C);
+    }
+
+    transpose() {
+        const m = this.rows;
+        const n = this.cols;
+        const T = Array.from({ length: n }, () => new Array(m));
+        
+        for (let i = 0; i < m; i++) {
+            for (let j = 0; j < n; j++) {
+                T[j][i] = this.data[i][j];
+            }
+        }
+        
+        return new Matrix(T);
+    }
+
+    cholesky() {
+        const n = this.rows;
+        const L = Array.from({ length: n }, () => new Array(n).fill(0));
+        
+        for (let i = 0; i < n; i++) {
+            for (let j = 0; j <= i; j++) {
+                let sum = 0;
+                for (let k = 0; k < j; k++) {
+                    sum += L[i][k] * L[j][k];
+                }
+                
+                if (i === j) {
+                    const val = this.data[i][i] - sum;
+                    if (val <= 0) {
+                        throw new Error('Matrix is not positive definite');
+                    }
+                    L[i][j] = Math.sqrt(val);
+                } else {
+                    L[i][j] = (this.data[i][j] - sum) / L[j][j];
+                }
+            }
+        }
+        
+        return new Matrix(L);
+    }
+
+    eig() {
+        // Simple power iteration for symmetric matrices
+        // This is a simplified implementation
+        const n = this.rows;
+        const maxIter = 100;
+        const tol = 1e-10;
+        
+        // For now, throw error - this should use a proper eigenvalue solver
+        // In practice, we'll use the sparse solver for large matrices
+        throw new Error('Dense eigenvalue decomposition not implemented - use sparse solver');
+    }
+}
+
+function matrixInverse(mat) {
+    const n = mat.rows;
+    const A = mat.data.map(row => row.slice());
+    const I = Array.from({ length: n }, (_, i) => 
+        Array.from({ length: n }, (_, j) => i === j ? 1 : 0)
+    );
+    
+    // Gaussian elimination with partial pivoting
+    for (let i = 0; i < n; i++) {
+        // Find pivot
+        let maxRow = i;
+        for (let k = i + 1; k < n; k++) {
+            if (Math.abs(A[k][i]) > Math.abs(A[maxRow][i])) {
+                maxRow = k;
+            }
+        }
+        
+        // Swap rows
+        [A[i], A[maxRow]] = [A[maxRow], A[i]];
+        [I[i], I[maxRow]] = [I[maxRow], I[i]];
+        
+        // Scale pivot row
+        const pivot = A[i][i];
+        if (Math.abs(pivot) < 1e-10) {
+            throw new Error('Matrix is singular');
+        }
+        
+        for (let j = 0; j < n; j++) {
+            A[i][j] /= pivot;
+            I[i][j] /= pivot;
+        }
+        
+        // Eliminate column
+        for (let k = 0; k < n; k++) {
+            if (k !== i) {
+                const factor = A[k][i];
+                for (let j = 0; j < n; j++) {
+                    A[k][j] -= factor * A[i][j];
+                    I[k][j] -= factor * I[i][j];
+                }
+            }
+        }
+    }
+    
+    return new Matrix(I);
+}
 
 /**
  * Return 2x2x2 Gauss quadrature points and weights for hexahedral element.
@@ -460,7 +656,7 @@ export function generate_bar_mesh_3d_adaptive(length, width, x_positions, elemen
  * @param {boolean} use_sparse - Whether to use sparse matrices (default: true)
  * @returns {Object} Object with K_global and M_global matrices
  */
-export function assemble_global_matrices_3d(nodes, elements, E, nu, rho, use_sparse = true) {
+export async function assemble_global_matrices_3d(nodes, elements, E, nu, rho, use_sparse = true) {
     const num_nodes = nodes.length;
     const num_dof = 3 * num_nodes;
     const num_elements = elements.length;
