@@ -87,6 +87,17 @@ export function computeF1ForUniformBar(
 }
 
 /**
+ * Progress update object for bar length finding.
+ * @typedef {Object} LengthSearchProgress
+ * @property {number} iteration - Current iteration number
+ * @property {number} maxIterations - Maximum number of iterations
+ * @property {number} currentLength - Current bar length being tested (mm)
+ * @property {number} currentFrequency - Computed frequency at current length (Hz)
+ * @property {number} errorCents - Frequency error in cents
+ * @property {number} searchRange - Remaining search range (mm)
+ */
+
+/**
  * Find optimal bar length for a target frequency using binary search.
  * 
  * Uses the fact that f1 decreases monotonically with length:
@@ -106,7 +117,7 @@ export function computeF1ForUniformBar(
  * @param {number} frequencyOffset - Calibration offset (e.g., -0.05 to aim 5% lower)
  * @param {number} ny - Number of elements in width direction (3D only)
  * @param {number} nz - Number of elements in thickness direction (3D only)
- * @param {Function} onProgress - Optional callback for progress updates
+ * @param {function(LengthSearchProgress): void} onProgress - Optional callback for progress updates
  * @returns {LengthSearchResult} Search result with optimal length and computed frequency
  */
 export function findOptimalLength(
